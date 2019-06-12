@@ -1,4 +1,5 @@
-import Random
+from collections import OrderedDict
+import random
 
 import pygame
 from pygame import Rect
@@ -37,6 +38,7 @@ class TopAlcanzada(Exception):
 
 class Bloque(pygame.sprite.Sprite):
 
+    @staticmethod
     def Chocar(bloque, grupo):
         """
         Valida si el bloque especifico choca con otro bloque dentro del grupo
@@ -65,7 +67,7 @@ class Bloque(pygame.sprite.Sprite):
             (200, 200, 0)
         ))
 
-        self.actual = True
+        self.actualizar = True
         self.estructura = np.array(self.estructura)
         # Rotación aleatoria inicial y de vuelta
         if random.randint(0, 1):
@@ -73,13 +75,13 @@ class Bloque(pygame.sprite.Sprite):
         if random.randint(0, 1):
             # Dar la vuelta en el eje X
             self.estructura = np.flip(self.estructura, 0)
-        self.dibujar()
+        self.draw()
 
-    def dibujar(self, x=4, y=0):
+    def draw(self, x=4, y=0):
         Ancho = len(self.estructura[0]) * Tamano_Titulo
         Alto = len(self.estructura) * Tamano_Titulo
-        self.imagen = pygame.surface.Surface([Ancho, Alto])
-        self.imagen.set_colorkey((0, 0, 0))
+        self.image = pygame.surface.Surface([Ancho, Alto])
+        self.image.set_colorkey((0, 0, 0))
         #Posicion y tamaño
         self.rect = Rect(0, 0, Ancho,  Alto)
         self.x = x
@@ -88,7 +90,7 @@ class Bloque(pygame.sprite.Sprite):
             for x, columna in enumerate(fila):
                 if columna:
                     pygame.draw.rect(
-                        self.imagen,
+                        self.image,
                         self.color,
                         Rect(x * Tamano_Titulo + 1, y * Tamano_Titulo + 1,
                              Tamano_Titulo - 2, Tamano_Titulo - 2)
@@ -96,7 +98,7 @@ class Bloque(pygame.sprite.Sprite):
         self.crear_mascara()
 
     def redibujar(self):
-        self.dibujar(self.x, self.y)
+        self.draw(self.x, self.y)
 
     def crear_mascara(self):
         """
@@ -106,26 +108,31 @@ class Bloque(pygame.sprite.Sprite):
 
         :return:
         """
-        self.mascara = pygame.mask.from_surface(self.imagen)
+        self.mascara = pygame.mask.from_surface(self.image)
 
     def inicar_dubujo(self):
         raise NotImplementedError
 
+    @property
     def grupo(self):
-        return self.grupo()[0]
+        return self.groups()[0]
 
+    @property
     def x(self):
-        return self.x
+        return self._x
 
+    @x.setter
     def x(self, valor):
-        self.x = valor
+        self._x = valor
         self.rect.left = valor * Tamano_Titulo
 
+    @property
     def y(self):
-        return self.y
+        return self._y
 
+    @y.setter
     def y(self, valor):
-        self.y = valor
+        self._y = valor
         self.rect.top = valor * Tamano_Titulo
 
     def movimiento_izquierda(self, grupo):
@@ -152,10 +159,10 @@ class Bloque(pygame.sprite.Sprite):
             raise Parteinferiror
 
     def rotar(self, grupo):
-        self.imagen = pygame.transform.rotate(self.imagen, 90)
+        self.image = pygame.transform.rotate(self.image, 90)
         # Una vez girados necesitamos actualizar el tamaño y la posición.
-        self.rect.width = self.imagen.obtener_Ancho()
-        self.rect.height = self.imagen.obtener_Alto()
+        self.rect.width = self.image.get_width()
+        self.rect.height = self.image.get_height()
         self.crear_mascara()
         # Comprueba que la nueva posición no excede los límites o choque con otros bloques y ajústelo si es necesario
         while self.rect.right > Ancho_Cuadricula:
@@ -173,7 +180,7 @@ class Bloque(pygame.sprite.Sprite):
     def actualizar(self):
         if self.actualizar:
             self.movimiento_abajo()
-            
+
 class Bloque_cuadrado(Bloque):
     estructura = (
         (1, 1),
@@ -305,6 +312,7 @@ class GrupoBloques(pygame.sprite.OrderedUpdates):
                     colid = Bloque.x + desplazamiento_x
                     self.cuadricula[rowid][colid] = (Bloque, desplazamiento_y)
 
+    @property
     def bloque_actual(self):
         return self.sprites()[-1]
 
@@ -325,7 +333,7 @@ class GrupoBloques(pygame.sprite.OrderedUpdates):
             pygame.K_DOWN: self.bloque_actual.movimiento_abajo,
             pygame.K_LEFT: self.bloque_actual.movimiento_izquierda,
             pygame.K_RIGHT: self.bloque_actual.movimiento_derecha
-                }
+        }
         try:
             # Cada función requiere que el grupo sea el primer argumento.
             # para comprobar cualquier posible colisión.
@@ -403,8 +411,8 @@ def main():
     MOVIMIENTOS_CLAVES = pygame.K_LEFT, pygame.K_RIGHT, pygame.K_DOWN
     ACTUALIZACIÓN_ACTUAL_BLOQUE_ACTUAL = pygame.USEREVENT + 1
     EVENTO_MOVIMIENTO_BLOQUE_ACTUAL = pygame.USEREVENT + 2
-    pygame.time.set_timer(ACTUALIZACIÓN_ACTUAL_BLOQUE_ACTUAL, 1000)
-    pygame.time.set_timer(EVENTO_MOVIMIENTO_BLOQUE_ACTUAL, 100)
+    pygame.time.set_timer(ACTUALIZACIÓN_ACTUAL_BLOQUE_ACTUAL, 2000)
+    pygame.time.set_timer(EVENTO_MOVIMIENTO_BLOQUE_ACTUAL, 200)
 
     bloques = GrupoBloques()
 
@@ -444,7 +452,7 @@ def main():
         bloques.draw(pantalla)
         # Sidebar with misc. information.
         dibujar_superficie_centrada(pantalla, siguiente_bloque_del_texto, 50)
-        dibujar_superficie_centrada(pantalla, bloques.siguiente_bloque.imagen, 100)
+        dibujar_superficie_centrada(pantalla, bloques.siguiente_bloque.image, 100)
         dibujar_superficie_centrada(pantalla, mensaje_puntaje_texto, 240)
         dibujar_superficie_centrada(pantalla, Pausa_bloque_del_texto, 500)
         mensaje_puntaje_texto = fuente.render(
@@ -459,4 +467,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-     
